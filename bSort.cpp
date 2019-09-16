@@ -33,25 +33,6 @@ struct FindLimit<Comp, std::tuple<Head, Tails...>> {
 	using type = typename Comp<Head>::template Apply<typename FindLimit<Comp, std::tuple<Tails...>>::type>::type;
 };
 
-template <typename... Tuples> struct ConcatenateTuple {};
-template <typename    Tuple0> struct ConcatenateTuple<Tuple0> {
-	using type = Tuple0;
-};
-template <typename Tuple0, typename Tuple1>
-struct ConcatenateTuple<Tuple0, Tuple1> {
-	template <typename TupleA> struct ConcatenateImpl {};
-	template <typename... TAs> struct ConcatenateImpl<std::tuple<TAs...> > {
-		template <typename TupleB> struct Apply;
-		template <typename... TBs> struct Apply<std::tuple<TBs...> > {
-			using type = std::tuple<TAs..., TBs...>;
-		};
-	};
-	using type = typename ConcatenateImpl<Tuple0>::template Apply<Tuple1>::type;
-};
-template <typename FirstTuple, typename... Follows> struct ConcatenateTuple<FirstTuple, Follows...> {
-	using type = typename ConcatenateTuple<FirstTuple, typename ConcatenateTuple<Follows...>::type>::type;
-};
-
 template<typename Limit, typename ...Tuples> struct PopLimit{};
 template<typename Limit>
 struct PopLimit<Limit,std::tuple<>> {
@@ -63,8 +44,8 @@ struct PopLimit<Limit, std::tuple<Limit, Others...>> {
 };
 template<typename Limit, typename Head, typename ...Others>
 struct PopLimit<Limit, std::tuple<Head, Others...>> {
-	using type = typename ConcatenateTuple<std::tuple<Head>,
-		typename PopLimit<Limit, std::tuple<Others...>>::type>::type;
+	using type = typename decltype(std::tuple_cat(std::tuple<Head>{},
+		typename PopLimit<Limit, std::tuple<Others...>>::type{}));
 };
 
 template<template <typename T1> class Comp, typename T> struct bSort;
@@ -75,7 +56,7 @@ template<template <typename T1> class Comp,typename ...values>
 struct bSort<Comp, std::tuple<values...>> {
 	using limit =typename FindLimit<Comp, std::tuple<values...>>::type;
 	using others =typename PopLimit<limit, std::tuple<values...>>::type;
-	using type = typename ConcatenateTuple<std::tuple<limit>, typename bSort<Comp,others>::type>::type;
+	using type = typename decltype(std::tuple_cat(std::tuple<limit>{}, typename bSort<Comp, others>::type{}));
 };
 
 void staticTest() {
@@ -97,7 +78,7 @@ void staticTest() {
 	static_assert(std::is_same<FindLimit<Less, lst_1_3>::type, i1>::value, "");
 	static_assert(std::is_same<FindLimit<GE, lst_1_3>::type, i3>::value, "");
 
-	static_assert(std::is_same<ConcatenateTuple<std::tuple<i1>, std::tuple<>>::type, std::tuple<i1>>::value, "");
+	static_assert(std::is_same<decltype(std::tuple_cat(std::tuple<i1>{}, std::tuple<>{})), std::tuple<i1 >> ::value, "");
 
 	static_assert(std::is_same<PopLimit<i3, lst_1_3>::type, lst_1_2>::value, "");
 	static_assert(std::is_same<PopLimit<i1, Values<1>::type>::type, std::tuple<>>::value, "");
